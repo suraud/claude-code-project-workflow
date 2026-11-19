@@ -7,6 +7,7 @@
 # 止める語: ~/.claude/public-ng-words.txt に 1 行 1 語で書く(大文字と小文字は区別しない)。
 #         個人名、メールアドレス、社内や顧客の名前など。リポジトリには入れない。
 #         # で始まる行と空行は読み飛ばす。
+# 独自の点検: プロジェクトごとに足したい点検は、.git/hooks/pre-push.local に置く(実行権を付ける)。
 # 作者: 送るコミットの作者のメールアドレスが noreply でなければ止める(個人の GitHub アカウントで公開する前提)。
 
 WORDS="$HOME/.claude/public-ng-words.txt"
@@ -23,6 +24,7 @@ trap 'rm -f "$list"' EXIT
 grep -v -e '^#' -e '^[[:space:]]*$' "$WORDS" > "$list"
 
 # 送る版(標準入力の各行の 2 番目が、送る版のコミット)を点検する。消すだけの送信は飛ばす
+refs=$(cat)
 while read -r _ local_sha _ _; do
   case "$local_sha" in *[!0]*) ;; *) continue ;; esac
   if ! git cat-file -e "$local_sha^{commit}" 2>/dev/null; then
@@ -38,10 +40,16 @@ while read -r _ local_sha _ _; do
     git log --format='  %h %ae %s' "$local_sha" --not --remotes | grep -v -i 'noreply' >&2
     bad=1
   fi
-done
+done <<< "$refs"
+
+# プロジェクト独自の点検。.git/hooks/pre-push.local があれば、同じ入力で実行し、失敗なら止める
+LOCAL="$(git rev-parse --git-path hooks)/pre-push.local"
+if [ -x "$LOCAL" ]; then
+  printf '%s\n' "$refs" | "$LOCAL" "$@" || bad=1
+fi
 
 if [ "$bad" = 1 ]; then
-  echo "送信を止めました: 上の箇所に、止める語、ホームのパス、noreply でないメールアドレスのどれかがあります。直してから、送り直してください。" >&2
+  echo "送信を止めました: 上の箇所に、止める語、ホームのパス、noreply でないメールアドレス、独自の点検(pre-push.local)の指摘のどれかがあります。直してから、送り直してください。" >&2
   exit 1
 fi
 exit 0

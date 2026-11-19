@@ -45,7 +45,7 @@ disable-model-invocation: true
 
 | 雛形 | 作成先 |
 |---|---|
-| `templates/README.md` | `README.md` |
+| `templates/README.md` | `README.md`(公開する場合は `templates/README-public.md` から `public/README.md`) |
 | `templates/CLAUDE.md` | `CLAUDE.md` |
 | `templates/TODO.md` | `TODO.md` |
 | `templates/gitignore` | `.gitignore` |
@@ -53,7 +53,7 @@ disable-model-invocation: true
 
 `references/`、`scripts/`、`archive/`、`docs/10_〜` はここでは作らない。空のフォルダは git に残らず、使われないまま紛らわしくなるため、中身ができたときに作る。`CLAUDE.md` の次回点検日には、作成日の 30 日後を入れる。
 
-`README.md` は人が読むためのもの。書き方は `structure.md` の「README.md の書き方」に従う。開始時点では機能がまだないので、「できること」には目指す姿を、「使い方」には「準備中」と書く。
+`README.md` は人が読むためのもの。書き方は `structure.md` の「README.md の書き方」に従う。開始時点では機能がまだないので、公開する場合の「特長」には目指す姿を、「動作環境」「インストール」「使い方」には「準備中」と書く。
 
 ### 5. git を初期化する
 

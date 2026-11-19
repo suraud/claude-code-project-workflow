@@ -19,5 +19,5 @@ description: 資料作成のルール。スライド(pptx)、表(xlsx)、HTML �
 
 ## 道具
 
-- 形式ごとに導入済みの skill を使う(`pptx`、`xlsx`、`docx`、グラフは `dataviz`)
+- 形式ごとの skill が導入されていれば使う(`pptx`、`xlsx`、`docx`、グラフは `dataviz`)
 - 内容の文章を書く部分は `99-rules-documents` に従う

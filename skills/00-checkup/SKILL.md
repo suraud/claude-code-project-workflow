@@ -1,7 +1,7 @@
 ---
 name: 00-checkup
-description: プロジェクトのフォルダ構成・ファイル構成と実際の使われ方を点検し、改善点を報告して、承認されたものを直す(PDCA)。引数 all で ~/work 配下を横断比較する。
-argument-hint: "[all]"
+description: プロジェクトのフォルダ構成・ファイル構成と実際の使われ方を点検し、改善点を報告して、承認されたものを直す(PDCA)。引数 all で、複数のプロジェクトを横断比較する。
+argument-hint: "[all [プロジェクトを並べた親フォルダ]]"
 disable-model-invocation: true
 ---
 
@@ -11,7 +11,7 @@ disable-model-invocation: true
 
 基準は `~/.claude/skills/00-kickoff/structure.md`。最初に読む。
 
-指示ファイルの中身(CLAUDE.md や skill の古い記述、矛盾)は、この skill では調べない。公式の `/doctor prompt-audit` と `/skill-doctor` が担当するので、最後に実行を案内する。
+指示ファイルの中身(CLAUDE.md や skill の古い記述、矛盾)は、この skill では調べない。公式の `/doctor prompt-audit` と `/skill-doctor` が担当するので、使える場合は最後に実行を案内する。
 
 ## 手順
 
@@ -62,11 +62,11 @@ disable-model-invocation: true
 
 - `docs/00_前提/決定事項.md` に、点検日・直したこと・見送ったことを 2〜3 行で残す
 - プロジェクトの `CLAUDE.md` の次回点検日を 30 日後に更新する
-- `/doctor prompt-audit` と `/skill-doctor` の実行を案内する
+- `/doctor prompt-audit` と `/skill-doctor` が使える場合は、実行を案内する
 
 ## 引数 all:横断点検
 
-`all` が指定されたら、`~/work` 直下の各プロジェクトを読み取りのみで比較する。個々のプロジェクトは直さない。
+`all` が指定されたら、親フォルダ直下の各プロジェクトを読み取りのみで比較する。個々のプロジェクトは直さない。親フォルダは `all` に続く引数で受け取る。省略されたら、現在のフォルダの親を案として示し、確かめてから進める。
 
 - 各プロジェクトについて、標準構成かどうか、標準からのずれ、最後に更新された時期を一覧にする
 - 複数のプロジェクトに共通するずれを抜き出す。共通するずれは、標準が実態に合っていない兆候なので、標準の見直し案として示す

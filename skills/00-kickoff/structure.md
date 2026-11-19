@@ -9,7 +9,7 @@
 ```
 <プロジェクト>/
   README.md          人が読む入口。何のプロジェクトか、状況、フォルダの見方
-  CLAUDE.md          Claude 向けの入口。概要、参照先の一覧、固有ルール、次回点検日(20 行前後)
+  CLAUDE.md          Claude 向けの入口。概要、参照先の一覧、固有ルール、次回点検日(200 行以内)
   TODO.md            現在地と残タスク
   .gitignore
   .claude/           Claude Code のプロジェクトの設定(Claude Code が作る。settings.local.json は git に入れない)

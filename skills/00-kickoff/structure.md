@@ -43,7 +43,7 @@
 - `public/` に置くもの:`README.md`、`LICENSE`、作ったもの本体、使う人向けの手順。`README.md` はプロジェクトの直下ではなく、ここに置く
 - `public/` に書かないもの:個人名、社内や顧客の情報、作業の経緯、調査の生のメモ。経緯は外側の `決定事項.md` に書く
 - コミットの前に、作者欄(`git config user.name`、`user.email`)を `public/` の中でも確かめる。個人の GitHub アカウントに置く場合は、noreply アドレスを使う(決め方は `SKILL.md` の初回コミットの手順にある)
-- リモートへ送る前に、個人名、パス、秘密情報が含まれていないかを検索して確かめる
+- リモートへ送る前の点検は、git の pre-push hook で自動にする。`public/` を作ったら、`templates/pre-push` を `public/.git/hooks/pre-push` にコピーして実行権を付ける。止める語(個人名、メールアドレス、社内や顧客の名前)は `~/.claude/public-ng-words.txt` に 1 行 1 語で書き、リポジトリには入れない。hook は、止める語、ホームのパス、noreply でない作者のアドレスを見つけると送信を止める。秘密情報は hook では見つけきれないので、送る前に差分を目でも確かめる
 
 ## README.md の書き方
 

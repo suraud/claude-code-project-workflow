@@ -70,6 +70,7 @@ disable-model-invocation: true
   - 公開したあとでアドレスを変えると、履歴の書き換えと強制 push が要り、古いコミットは GitHub 上にしばらく残る。初回コミットの前に決める
 - 不要と言われたら省く
 - リモートへの push は、URL を受け取り、実行前に確認を取ってから行う
+- `public/` を作った場合は、`structure.md` の「成果物を公開する場合」に従い、`public/.git/hooks/pre-push` を置く。`~/.claude/public-ng-words.txt` がなければ、止める語(利用者の氏名、メールアドレス、会社名など)を尋ねて作る
 
 ### 6. 報告する
 

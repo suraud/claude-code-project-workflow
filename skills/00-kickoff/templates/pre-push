@@ -1,0 +1,47 @@
+#!/bin/bash
+# 公開リポジトリへ送る前の点検(git の pre-push hook)。
+# 送ろうとしている版のファイルに、止める語か、ホームのパスが入っていたら、送信を止める。
+#
+# 置き方: public/.git/hooks/pre-push にコピーし、実行権を付ける(chmod +x)。
+#         .git の中なので、リポジトリには入らない。clone し直したら、置き直す。
+# 止める語: ~/.claude/public-ng-words.txt に 1 行 1 語で書く(大文字と小文字は区別しない)。
+#         個人名、メールアドレス、社内や顧客の名前など。リポジトリには入れない。
+#         # で始まる行と空行は読み飛ばす。
+# 作者: 送るコミットの作者のメールアドレスが noreply でなければ止める(個人の GitHub アカウントで公開する前提)。
+
+WORDS="$HOME/.claude/public-ng-words.txt"
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+if [ ! -s "$WORDS" ]; then
+  echo "送信を止めました: 止める語の一覧 $WORDS がないか、空です。個人名などを 1 行 1 語で書いてから、送り直してください。" >&2
+  exit 1
+fi
+
+bad=0
+list=$(mktemp) || exit 1
+trap 'rm -f "$list"' EXIT
+grep -v -e '^#' -e '^[[:space:]]*$' "$WORDS" > "$list"
+
+# 送る版(標準入力の各行の 2 番目が、送る版のコミット)を点検する。消すだけの送信は飛ばす
+while read -r _ local_sha _ _; do
+  case "$local_sha" in *[!0]*) ;; *) continue ;; esac
+  if ! git cat-file -e "$local_sha^{commit}" 2>/dev/null; then
+    echo "送信を止めました: 送る版 $local_sha を読めませんでした。" >&2
+    exit 1
+  fi
+  if [ -s "$list" ] && git grep -n -i -F -f "$list" "$local_sha" -- . ; then bad=1; fi
+  # パスの語を分けて書くのは、この hook 自身が引っかからないようにするため
+  if git grep -n -E "/Us""ers/[^/[:space:]]+|/ho""me/[^/[:space:]]+" "$local_sha" -- . ; then bad=1; fi
+  # 会社のアドレスで公開する場合は、git config hooks.allowNonNoreply true で、この点検を外す
+  if [ "$(git config --get hooks.allowNonNoreply)" != true ] && git log --format='%ae' "$local_sha" --not --remotes 2>/dev/null | grep -v -i 'noreply' | grep -q . ; then
+    echo "作者のメールアドレスが noreply ではないコミットがあります:" >&2
+    git log --format='  %h %ae %s' "$local_sha" --not --remotes | grep -v -i 'noreply' >&2
+    bad=1
+  fi
+done
+
+if [ "$bad" = 1 ]; then
+  echo "送信を止めました: 上の箇所に、止める語、ホームのパス、noreply でないメールアドレスのどれかがあります。直してから、送り直してください。" >&2
+  exit 1
+fi
+exit 0

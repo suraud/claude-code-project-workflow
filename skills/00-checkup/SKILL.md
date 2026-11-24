@@ -39,7 +39,7 @@ disable-model-invocation: true
 
 **安全**
 - 秘密情報らしきファイル(`credentials`、`token`、`secret`、`.env`、`.pem`、`.key`)が git の管理対象になっていないか。中身は開かず、ファイル名と管理状態だけを見る
-- `public/` があれば、`public/.git/hooks/pre-push` が置かれていて、`templates/pre-push` と同じ中身か
+- `public/` があれば、`public/.git/hooks/pre-push` が置かれていて、`~/.claude/skills/00-kickoff/templates/pre-push` と同じ中身か
 - コミットされていない変更の量
 
 ### 2. 報告する

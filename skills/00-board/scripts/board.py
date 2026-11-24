@@ -31,16 +31,20 @@ RELOAD_SECONDS = 60  # 開いたままのボードが自分で読み直す間隔
 SECTIONS = [
     ("wait", "回答待ち"),
     ("do", "やる"),
+    ("ask", "質問"),
     ("later", "手が空いたら"),
 ]
-# ボードの列。「いま対応する」には、期限が今日までのカードが、節に関係なく集まる
+# ボードの区画。最初の「いま対応する」は上の段に置き、期限が今日までのカードが、節に関係なく集まる。
+# 残りは、下の段に列として並べる
 COLUMNS = [
     ("now", "いま対応する", "期限が今日まで、または過ぎたもの"),
     ("do", "自分の番", "自分がやる・決める"),
+    ("ask", "質問に答える", "Claude からの質問"),
     ("wait", "相手の番", "相手の回答待ち"),
     ("later", "手が空いたら", "急がないもの"),
 ]
-ORIGIN_LABEL = {"wait": "相手の番 → 催促する", "do": "自分の番", "later": "手が空いたら"}
+ORIGIN_LABEL = {"wait": "相手の番 → 催促する", "do": "自分の番", "ask": "質問に答える", "later": "手が空いたら"}
+SECTION_NAMES = {"wait": "相手の回答待ち", "do": "自分がやる・決める", "ask": "Claude からの質問", "later": "手が空いたら"}
 FIELD_ORDER = ["相手", "場所", "期限", "最後の動き", "次にやること", "メモ"]
 DATE_RE = re.compile(r"(\d{4})-(\d{1,2})-(\d{1,2})")
 URL_RE = re.compile(r"https?://[^\s<>\"'）)」]+")
@@ -220,8 +224,8 @@ def sort_key(card):
 
 
 CSS = """
-:root{--bg:#f6f8fa;--card:#fff;--fg:#1f2328;--sub:#57606a;--line:#d0d7de;--now:#c0392b;--wait:#b8641a;--do:#0969da;--later:#57606a;--late:#c0392b;--latebg:#fdecea}
-@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--card:#161b22;--fg:#e6edf3;--sub:#9da7b3;--line:#30363d;--now:#e0675a;--wait:#e09a4f;--do:#4493f8;--later:#9da7b3;--late:#e0675a;--latebg:#3a1d1a}}
+:root{--bg:#f6f8fa;--card:#fff;--fg:#1f2328;--sub:#57606a;--line:#d0d7de;--now:#c0392b;--wait:#b8641a;--do:#0969da;--ask:#8250df;--later:#57606a;--late:#c0392b;--latebg:#fdecea}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--card:#161b22;--fg:#e6edf3;--sub:#9da7b3;--line:#30363d;--now:#e0675a;--wait:#e09a4f;--do:#4493f8;--ask:#a371f7;--later:#9da7b3;--late:#e0675a;--latebg:#3a1d1a}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;font-size:14px;line-height:1.6}
 main{max-width:1280px;margin:0 auto;padding:20px 16px 48px}
@@ -231,6 +235,8 @@ h1{font-size:1.3em;margin:0 0 4px}
 .filters button{font:inherit;font-size:.9em;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px 12px;cursor:pointer}
 .filters button.on{background:var(--do);border-color:var(--do);color:#fff}
 .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;align-items:start}
+.top{margin:0 0 20px}
+.top .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 14px;align-items:start}
 .col h2{font-size:1em;margin:0;padding-bottom:2px}
 .col .desc{color:var(--sub);font-size:.82em;margin:0 0 8px;padding-bottom:6px;border-bottom:3px solid var(--c)}
 .origin{font-weight:700;color:var(--late)}
@@ -299,13 +305,15 @@ def render(projects, now):
         parts.append('<div class="filters">%s</div>' % "".join(buttons))
     if not projects:
         parts.append('<p class="empty">タスクボード.md のあるプロジェクトが、まだありません。</p>')
-    parts.append('<div class="cols">')
-    for key, title, desc in COLUMNS:
+    for i, (key, title, desc) in enumerate(COLUMNS):
         col = sorted((c for c in cards if board_column(c, today) == key), key=sort_key)
         body = "".join(render_card(c, today) for c in col)
         body += '<p class="empty"%s>なし</p>' % (' style="display:none"' if col else "")
-        parts.append('<section class="col" style="--c:var(--%s)"><h2>%s <span>%d 件</span></h2>'
-                     '<p class="desc">%s</p>%s</section>' % (key, title, len(col), desc, body))
+        parts.append('<section class="col%s" style="--c:var(--%s)"><h2>%s <span>%d 件</span></h2>'
+                     '<p class="desc">%s</p><div class="cards">%s</div></section>' % (
+                         " top" if i == 0 else "", key, title, len(col), desc, body))
+        if i == 0:
+            parts.append('<div class="cols">')
     script = JS.replace("RELOAD_MS", str(RELOAD_SECONDS * 1000))
     parts.append("</div></main><script>%s</script></body></html>\n" % script)
     return "\n".join(parts)
@@ -374,7 +382,6 @@ def hook_start():
             continue
         if not p["cards"]:
             return
-        names = {"wait": "相手の回答待ち", "do": "自分がやる・決める", "later": "手が空いたら"}
         lines = []
         for c in p["cards"]:
             no = "%d 番" % c["no"] if c["no"] is not None else "番号なし"
@@ -384,7 +391,7 @@ def hook_start():
                 due = "期限 %s、%d 日超過" % (c["due"].isoformat(), (today - c["due"]).days)
             else:
                 due = "期限 %s" % c["due"].isoformat()
-            lines.append("- %s [%s] %s(%s)" % (no, names[c["column"]], c["title"], due))
+            lines.append("- %s [%s] %s(%s)" % (no, SECTION_NAMES[c["column"]], c["title"], due))
         msg = ("このプロジェクトのタスクボード(%s)のカードです。利用者が動く・待つことの一覧で、"
                "書き換えの決まりは ~/.claude/skills/00-board/format.md にあります。"
                "作業の中で、返事が来た・片づいた・増えた、に気づいたら書き換えてください。\n%s") % (

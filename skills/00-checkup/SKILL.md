@@ -11,7 +11,7 @@ disable-model-invocation: true
 
 基準は `~/.claude/skills/00-kickoff/structure.md`。最初に読む。
 
-指示ファイルの中身(CLAUDE.md や skill の古い記述、矛盾)は、この skill では調べない。公式の `/doctor prompt-audit` と `/skill-doctor` が担当するので、使える場合は最後に実行を案内する。
+指示ファイルの中身(CLAUDE.md や skill の古い記述、存在しないファイルやコマンドへの参照、互いの矛盾)は、この skill では調べない。公式の `/doctor prompt-audit` が担当するので、使える場合は最後に実行を案内する。
 
 ## 手順
 
@@ -64,7 +64,7 @@ disable-model-invocation: true
 
 - `docs/00_前提/決定事項.md` に、点検日・直したこと・見送ったことを 2〜3 行で残す
 - プロジェクトの `CLAUDE.md` の次回点検日を 30 日後に更新する(点検は月に 1 回を目安にする)
-- `/doctor prompt-audit` と `/skill-doctor` が使える場合は、実行を案内する
+- `/doctor prompt-audit` が使える場合は、実行を案内する。利用者がプロンプトに入力するコマンドで、指摘と修正案が報告される(頼むまでファイルは変わらない)。対象を絞るときは、`/doctor prompt-audit <パス>` のようにパスを渡す
 
 ## 引数 all:横断点検
 

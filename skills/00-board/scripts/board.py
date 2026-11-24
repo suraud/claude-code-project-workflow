@@ -412,9 +412,12 @@ def main():
         print("作り直しました: %s(%d プロジェクト、%d 件)" % (
             OUT_FILE, len(projects), sum(len(p["cards"]) for p in projects)))
     elif cmd == "open":
-        build()
+        projects = build()
         subprocess.run(["open", OUT_FILE], check=False)
-        print("開きました: %s" % OUT_FILE)
+        today = datetime.date.today()
+        cards = [c for p in projects for c in p["cards"]]
+        print("開きました: %s(いま対応する %d 件、全体 %d 件)" % (
+            OUT_FILE, sum(1 for c in cards if is_now(c, today)), len(cards)))
     elif cmd == "hook-edit":
         hook_edit()
     elif cmd == "hook-start":

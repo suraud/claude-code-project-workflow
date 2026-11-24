@@ -16,7 +16,7 @@ disable-model-invocation: true
 ~/.claude/skills/00-board/scripts/board.py open
 ```
 
-実行したら、開いたことと、「いま対応する」の件数を一言で伝える。
+実行したら、出力にある「いま対応する」の件数を添えて、開いたことを一言で伝える。
 
 ## 仕組み
 

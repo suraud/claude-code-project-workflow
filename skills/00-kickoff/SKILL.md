@@ -37,7 +37,7 @@ disable-model-invocation: true
 
 ### 3. 構成を提示して承認を得る
 
-作成するファイルの一覧と、成果物の種類から考えた `docs/10_〜` のフォルダ案を見せる。`docs/10_〜` は案を示すだけにとどめ、実際に中身ができたときに作る。承認を得てから次へ進む。
+作成するファイルの一覧と、成果物の種類から考えた `docs/10_〜` のフォルダ案を見せる。作業フォルダの外に書くもの(`~/.claude/kickoff-projects.txt` への登録、`public/` を作る場合の `~/.claude/public-ng-words.txt`)も、この一覧に含める。`docs/10_〜` は案を示すだけにとどめ、実際に中身ができたときに作る。承認を得てから次へ進む。
 
 ### 4. 作成する
 
@@ -46,7 +46,7 @@ disable-model-invocation: true
 | 雛形 | 作成先 |
 |---|---|
 | `templates/README.md` | `README.md`(公開する場合は `templates/README-public.md` から `public/README.md`) |
-| `templates/CLAUDE.md` | `CLAUDE.md` |
+| `templates/CLAUDE.template.md` | `CLAUDE.md` |
 | `templates/TODO.md` | `TODO.md` |
 | `templates/gitignore` | `.gitignore` |
 | `templates/00_前提/*.md` | `docs/00_前提/` |

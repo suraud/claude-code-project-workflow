@@ -171,9 +171,12 @@ def due_label(card, today):
     due = card["due"]
     raw = card["fields"].get("期限")
     if due is None:
+        # 期限の行がないものも、「未設定」と書いたものも、同じ表示にそろえる
         if card["column"] == "wait":
-            return '<span class="due late">期限なし(催促する日を決める)</span>'
-        return ('<span class="nodue">期限: %s</span>' % esc(raw)) if raw else ""
+            return '<span class="due late">期限 未設定(催促する日を決める)</span>'
+        if raw and raw != "未設定":
+            return '<span class="nodue">期限 %s</span>' % esc(raw)
+        return '<span class="nodue">期限 未設定</span>'
     days = (due - today).days
     text = "期限 %d/%d(%s)" % (due.month, due.day, WEEKDAYS[due.weekday()])
     if days < 0:
@@ -198,24 +201,36 @@ def moved_label(card, today):
 def render_card(card, today):
     f = card["fields"]
     late = " is-late" if is_late(card, today) else ""
-    rows = []
+    # 閉じていても見えるのは、件名と、だれの番か・期限だけ。残りは、カードを押すと開く
+    head = []
     if is_now(card, today):
-        rows.append('<span class="origin">%s</span>' % esc(ORIGIN_LABEL[card["column"]]))
+        head.append('<span class="origin">%s</span>' % esc(ORIGIN_LABEL[card["column"]]))
+    due = due_label(card, today)
+    if due:
+        head.append(due)
+    rows = []
     who = " / ".join(linkify(f[k]) for k in ("相手", "場所") if f.get(k))
     if who:
         rows.append(who)
-    line = " ・ ".join(x for x in (due_label(card, today), moved_label(card, today)) if x)
-    if line:
-        rows.append(line)
+    moved = moved_label(card, today)
+    if moved:
+        rows.append(moved)
     if f.get("次にやること"):
         rows.append("次にやること: " + linkify(f["次にやること"]))
     if f.get("メモ"):
         rows.append(linkify(f["メモ"]))
     rows.extend(linkify(n) for n in card["notes"])
-    meta = "".join('<div class="meta">%s</div>' % r for r in rows)
     no = '<span class="no">%d 番</span>' % card["no"] if card["no"] is not None else ""
-    return '<div class="card%s" data-project="%s"><span class="proj">%s</span>%s<b>%s</b>%s</div>' % (
-        late, esc(card["project"]), esc(card["project"]), no, linkify(card["title"]), meta)
+    top = '<span class="proj">%s</span>%s<b>%s</b>' % (esc(card["project"]), no, linkify(card["title"]))
+    if head:
+        top += '<span class="meta">%s</span>' % " ・ ".join(head)
+    attrs = 'class="card%s" data-project="%s"' % (late, esc(card["project"]))
+    if not rows:
+        return "<div %s>%s</div>" % (attrs, top)
+    key = "%s#%s" % (card["project"], card["no"] if card["no"] is not None else card["title"])
+    more = "".join('<div class="meta">%s</div>' % r for r in rows)
+    return '<details %s data-key="%s"><summary>%s</summary><div class="more">%s</div></details>' % (
+        attrs, esc(key), top, more)
 
 
 def sort_key(card):
@@ -232,6 +247,7 @@ main{max-width:1280px;margin:0 auto;padding:20px 16px 48px}
 h1{font-size:1.3em;margin:0 0 4px}
 .sub{color:var(--sub);font-size:.9em;margin:0 0 12px}
 .filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.filters .gap{flex:1}
 .filters button{font:inherit;font-size:.9em;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px 12px;cursor:pointer}
 .filters button.on{background:var(--do);border-color:var(--do);color:#fff}
 .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;align-items:start}
@@ -241,13 +257,19 @@ h1{font-size:1.3em;margin:0 0 4px}
 .col .desc{color:var(--sub);font-size:.82em;margin:0 0 8px;padding-bottom:6px;border-bottom:3px solid var(--c)}
 .origin{font-weight:700;color:var(--late)}
 .col h2 span{color:var(--sub);font-weight:400;font-size:.9em}
-.card{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:6px;padding:10px 12px;margin-bottom:10px;overflow-wrap:anywhere}
+.card{display:block;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:6px;padding:7px 10px;margin-bottom:8px;overflow-wrap:anywhere}
+.card summary{cursor:pointer;list-style:none}
+.card summary::-webkit-details-marker{display:none}
+.card summary b::after{content:" ▸";color:var(--sub);font-weight:400}
+.card[open] summary b::after{content:" ▾"}
+.card .more{margin-top:6px;padding-top:6px;border-top:1px dashed var(--line)}
+.card .more .meta+.meta{margin-top:2px}
 .card.is-late{border-color:var(--late);border-left-color:var(--late);background:var(--latebg)}
-.card b{display:block;margin-bottom:2px}
+.card b{display:block}
 .proj{display:inline-block;font-size:.78em;color:var(--sub);border:1px solid var(--line);border-radius:4px;padding:0 6px;margin-bottom:4px}
 .no{display:inline-block;font-size:.78em;font-weight:700;color:var(--c);border:1px solid var(--c);border-radius:4px;padding:0 6px;margin:0 0 4px 6px}
 .card.is-late .no{color:var(--late);border-color:var(--late)}
-.meta{color:var(--sub);font-size:.88em}
+.meta{display:block;color:var(--sub);font-size:.88em}
 .due{font-weight:700;color:var(--c)}
 .due.late{color:var(--late)}
 .empty{color:var(--sub);font-size:.9em}
@@ -257,7 +279,7 @@ a{color:var(--do)}
 JS = """
 (function(){
   var KEY='board-project';
-  var buttons=document.querySelectorAll('.filters button');
+  var buttons=document.querySelectorAll('.filters button[data-project]');
   function load(){try{return localStorage.getItem(KEY)||''}catch(e){return ''}}
   function save(v){try{localStorage.setItem(KEY,v)}catch(e){}}
   function apply(name){
@@ -282,6 +304,25 @@ JS = """
   if(!want)want=load();
   var known=false;buttons.forEach(function(b){if(b.dataset.project===want)known=true});
   apply(known?want:'');
+  // 開いたカードを覚えておき、読み直しても開いたままにする
+  var OPEN='board-open';
+  var cards=document.querySelectorAll('details.card');
+  function opened(){try{return JSON.parse(localStorage.getItem(OPEN)||'[]')}catch(e){return []}}
+  function remember(){
+    var keys=[];cards.forEach(function(d){if(d.open)keys.push(d.dataset.key)});
+    try{localStorage.setItem(OPEN,JSON.stringify(keys))}catch(e){}
+  }
+  var was=opened();
+  cards.forEach(function(d){
+    if(was.indexOf(d.dataset.key)>=0)d.open=true;
+    d.addEventListener('toggle',remember);
+  });
+  document.querySelectorAll('button[data-open]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var on=b.dataset.open==='1';
+      cards.forEach(function(d){if(d.style.display!=='none')d.open=on});
+    });
+  });
   // 開いたままで読み直す。絞り込みは、アドレスの # と保存した値の両方から戻す
   setTimeout(function(){location.reload()},RELOAD_MS);
 })();
@@ -296,12 +337,17 @@ def render(projects, now):
         '<meta name="viewport" content="width=device-width, initial-scale=1">',
         "<title>タスクボード</title><style>%s</style></head><body><main>" % CSS,
         "<h1>タスクボード</h1>",
-        '<p class="sub">%s 時点 ・ %d プロジェクト ・ %d 件。開いたままで、%d 秒ごとに読み直します。</p>' % (
+        '<p class="sub">%s 時点 ・ %d プロジェクト ・ %d 件。カードを押すと、詳細が開きます。開いたままで、%d 秒ごとに読み直します。</p>' % (
             now.strftime("%Y-%m-%d %H:%M"), len(projects), len(cards), RELOAD_SECONDS),
     ]
+    buttons = []
     if len(projects) > 1:
-        buttons = ['<button data-project="">すべて</button>']
+        buttons.append('<button data-project="">すべて</button>')
         buttons += ['<button data-project="%s">%s</button>' % (esc(p["name"]), esc(p["name"])) for p in projects]
+    if cards:
+        buttons.append('<span class="gap"></span><button data-open="1">詳細を開く</button>'
+                       '<button data-open="0">詳細を閉じる</button>')
+    if buttons:
         parts.append('<div class="filters">%s</div>' % "".join(buttons))
     if not projects:
         parts.append('<p class="empty">タスクボード.md のあるプロジェクトが、まだありません。</p>')

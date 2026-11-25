@@ -297,6 +297,7 @@ JS = """
     save(name);
     try{history.replaceState(null,'',name?'#'+encodeURIComponent(name):location.pathname)}catch(e){}
     apply(name);
+    label();
   }
   buttons.forEach(function(b){b.addEventListener('click',function(){pick(b.dataset.project)})});
   var want='';
@@ -312,17 +313,23 @@ JS = """
     var keys=[];cards.forEach(function(d){if(d.open)keys.push(d.dataset.key)});
     try{localStorage.setItem(OPEN,JSON.stringify(keys))}catch(e){}
   }
+  // ボタンは 1 つ。見えているカードに閉じたものがあれば「開く」、すべて開いていれば「閉じる」になる
+  var all=document.getElementById('toggle-all');
+  function anyClosed(){
+    var n=false;cards.forEach(function(d){if(d.style.display!=='none'&&!d.open)n=true});return n;
+  }
+  function label(){if(all)all.textContent=anyClosed()?'詳細を開く':'詳細を閉じる'}
   var was=opened();
   cards.forEach(function(d){
     if(was.indexOf(d.dataset.key)>=0)d.open=true;
-    d.addEventListener('toggle',remember);
+    d.addEventListener('toggle',function(){remember();label()});
   });
-  document.querySelectorAll('button[data-open]').forEach(function(b){
-    b.addEventListener('click',function(){
-      var on=b.dataset.open==='1';
-      cards.forEach(function(d){if(d.style.display!=='none')d.open=on});
-    });
+  if(all)all.addEventListener('click',function(){
+    var on=anyClosed();
+    cards.forEach(function(d){if(d.style.display!=='none')d.open=on});
+    label();
   });
+  label();
   // 開いたままで読み直す。絞り込みは、アドレスの # と保存した値の両方から戻す
   setTimeout(function(){location.reload()},RELOAD_MS);
 })();
@@ -345,8 +352,7 @@ def render(projects, now):
         buttons.append('<button data-project="">すべて</button>')
         buttons += ['<button data-project="%s">%s</button>' % (esc(p["name"]), esc(p["name"])) for p in projects]
     if cards:
-        buttons.append('<span class="gap"></span><button data-open="1">詳細を開く</button>'
-                       '<button data-open="0">詳細を閉じる</button>')
+        buttons.append('<span class="gap"></span><button id="toggle-all">詳細を開く</button>')
     if buttons:
         parts.append('<div class="filters">%s</div>' % "".join(buttons))
     if not projects:

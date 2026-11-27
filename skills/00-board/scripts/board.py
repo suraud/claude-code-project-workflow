@@ -47,6 +47,9 @@ ORIGIN_LABEL = {"wait": "相手の番 → 催促する", "do": "自分の番", "
 SECTION_NAMES = {"wait": "相手の回答待ち", "do": "自分がやる・決める", "ask": "Claude からの質問", "later": "手が空いたら"}
 FIELD_ORDER = ["相手", "場所", "期限", "最後の動き", "次にやること", "メモ"]
 DATE_RE = re.compile(r"(\d{4})-(\d{1,2})-(\d{1,2})")
+# 項目の行: 字下げした「- [ ] 文」「- [x] 文」。文の中の「(期限: 2026-01-15)」が、その項目の期限になる
+ITEM_RE = re.compile(r"^\[([ xX])\]\s+(.+)$")
+ITEM_DUE_RE = re.compile(r"\s*[((]期限[::]\s*(\d{4}-\d{1,2}-\d{1,2})\s*[))]")
 URL_RE = re.compile(r"https?://[^\s<>\"'）)」]+")
 WEEKDAYS = "月火水木金土日"
 
@@ -108,12 +111,22 @@ def parse(path):
             n = re.match(r"^#(\d+)\s+(.+)$", title)
             if n:
                 no, title = int(n.group(1)), n.group(2).strip()
-            card = {"column": column, "no": no, "title": title, "fields": {}, "notes": []}
+            card = {"column": column, "no": no, "title": title, "fields": {}, "notes": [], "items": []}
             cards.append(card)
             continue
         m = re.match(r"^\s+[-*]\s+(.+)$", line)
         if m and card is not None:
             body = m.group(1).strip()
+            item = ITEM_RE.match(body)
+            if item:
+                text = item.group(2).strip()
+                due = ITEM_DUE_RE.search(text)
+                card["items"].append({
+                    "done": item.group(1) != " ",
+                    "text": ITEM_DUE_RE.sub("", text).strip() if due else text,
+                    "due": find_date(due.group(1)) if due else None,
+                })
+                continue
             kv = re.match(r"^([^::]{1,12})[::]\s*(.*)$", body)
             if kv and kv.group(1).strip() in FIELD_ORDER:
                 card["fields"][kv.group(1).strip()] = kv.group(2).strip()
@@ -133,7 +146,11 @@ def collect():
         cards = parse(src)
         for c in cards:
             c["project"] = name
-            c["due"] = find_date(c["fields"].get("期限"))
+            # カードの期限は、「期限」の行と、済んでいない項目の期限のうち、いちばん近い日
+            dues = [find_date(c["fields"].get("期限"))]
+            dues += [i["due"] for i in c["items"] if not i["done"]]
+            dues = [d for d in dues if d is not None]
+            c["due"] = min(dues) if dues else None
             c["moved"] = find_date(c["fields"].get("最後の動き"))
         projects.append({"name": name, "root": root, "cards": cards})
     return projects
@@ -186,6 +203,22 @@ def due_label(card, today):
     return '<span class="due">%s ・ あと %d 日</span>' % (text, days)
 
 
+def progress_label(card):
+    items = card["items"]
+    if not items:
+        return ""
+    return "%d つのうち %d つ済み" % (len(items), sum(1 for i in items if i["done"]))
+
+
+def render_item(item, today):
+    text = ("☑ " if item["done"] else "☐ ") + linkify(item["text"])
+    due = item["due"]
+    if due is not None and not item["done"]:
+        late = " late" if due <= today else ""
+        text += ' <span class="due%s">期限 %d/%d(%s)</span>' % (late, due.month, due.day, WEEKDAYS[due.weekday()])
+    return '<span class="item%s">%s</span>' % (" done" if item["done"] else "", text)
+
+
 def moved_label(card, today):
     raw = card["fields"].get("最後の動き")
     if not raw:
@@ -205,6 +238,9 @@ def render_card(card, today):
     head = []
     if is_now(card, today):
         head.append('<span class="origin">%s</span>' % esc(ORIGIN_LABEL[card["column"]]))
+    progress = progress_label(card)
+    if progress:
+        head.append(esc(progress))
     due = due_label(card, today)
     if due:
         head.append(due)
@@ -219,6 +255,7 @@ def render_card(card, today):
         rows.append("次にやること: " + linkify(f["次にやること"]))
     if f.get("メモ"):
         rows.append(linkify(f["メモ"]))
+    rows.extend(render_item(i, today) for i in card["items"])
     rows.extend(linkify(n) for n in card["notes"])
     no = '<span class="no">%d 番</span>' % card["no"] if card["no"] is not None else ""
     top = '<span class="proj">%s</span>%s<b>%s</b>' % (esc(card["project"]), no, linkify(card["title"]))
@@ -272,6 +309,8 @@ h1{font-size:1.3em;margin:0 0 4px}
 .meta{display:block;color:var(--sub);font-size:.88em}
 .due{font-weight:700;color:var(--c)}
 .due.late{color:var(--late)}
+.item{display:block;padding-left:1.4em;text-indent:-1.4em}
+.item.done{text-decoration:line-through;opacity:.6}
 .empty{color:var(--sub);font-size:.9em}
 a{color:var(--do)}
 """
@@ -443,6 +482,8 @@ def hook_start():
                 due = "期限 %s、%d 日超過" % (c["due"].isoformat(), (today - c["due"]).days)
             else:
                 due = "期限 %s" % c["due"].isoformat()
+            if c["items"]:
+                due += "、項目 " + progress_label(c)
             lines.append("- %s [%s] %s(%s)" % (no, SECTION_NAMES[c["column"]], c["title"], due))
         msg = ("このプロジェクトのタスクボード(%s)のカードです。利用者が動く・待つことの一覧で、"
                "書き換えの決まりは ~/.claude/skills/00-board/format.md にあります。"
